@@ -1,0 +1,187 @@
+{% extends "iframe_base.html" %}
+
+{% block title %}Project Summary{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+  <h1 class="text-3xl font-bold text-blue-600 mb-6">Project Progress Summary</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Overall Progress Chart -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Overall Progress</h2>
+      <canvas id="progressChart" height="250"></canvas>
+    </div>
+
+    <!-- Ticket Status Distribution -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Ticket Status Distribution</h2>
+      <canvas id="statusChart" height="250"></canvas>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Priority Distribution -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Ticket Priority</h2>
+      <canvas id="priorityChart" height="250"></canvas>
+    </div>
+
+    <!-- Type Distribution -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Ticket Types</h2>
+      <canvas id="typeChart" height="250"></canvas>
+    </div>
+  </div>
+
+  {% if current_user.role == 'admin' or current_user.role == 'manager' %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Team Performance -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Team Performance</h2>
+      <canvas id="teamChart" height="250"></canvas>
+    </div>
+
+    <!-- Project Timeline -->
+    <div class="bg-white p-6 rounded shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Project Timeline</h2>
+      <canvas id="timelineChart" height="250"></canvas>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Chart data from backend
+  const totalTickets = {{ total_tickets|default(1) }};
+  const completedTickets = {{ completed_tickets|default(0) }};
+  const statusData = {{ status_data|tojson }};
+  const priorityData = {{ priority_data|tojson }};
+  const typeData = {{ type_data|tojson }};
+  {% if current_user.role == 'admin' or current_user.role == 'manager' %}
+  const teamData = {{ team_data|tojson }};
+  const timelineData = {{ timeline_data|tojson }};
+  {% endif %}
+
+  // Overall Progress Chart
+  const progressCtx = document.getElementById('progressChart').getContext('2d');
+  new Chart(progressCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Completed', 'Remaining'],
+      datasets: [{
+        data: [completedTickets, totalTickets - completedTickets],
+        backgroundColor: ['#34D399', '#F87171'],
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+
+  // Status Distribution Chart
+  const statusCtx = document.getElementById('statusChart').getContext('2d');
+  new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(statusData),
+      datasets: [{
+        label: 'Number of Tickets',
+        data: Object.values(statusData),
+        backgroundColor: ['#FBBF24', '#60A5FA', '#A78BFA', '#34D399'],
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Priority Chart
+  const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+  new Chart(priorityCtx, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(priorityData),
+      datasets: [{
+        data: Object.values(priorityData),
+        backgroundColor: ['#F87171', '#FBBF24', '#60A5FA', '#34D399'],
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+
+  // Type Chart
+  const typeCtx = document.getElementById('typeChart').getContext('2d');
+  new Chart(typeCtx, {
+    type: 'polarArea',
+    data: {
+      labels: Object.keys(typeData),
+      datasets: [{
+        data: Object.values(typeData),
+        backgroundColor: ['#60A5FA', '#A78BFA', '#34D399', '#FBBF24', '#F87171'],
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+
+  {% if current_user.role == 'admin' or current_user.role == 'manager' %}
+  // Team Performance Chart
+  const teamCtx = document.getElementById('teamChart').getContext('2d');
+  new Chart(teamCtx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(teamData),
+      datasets: [{
+        label: 'Completed Tickets',
+        data: Object.values(teamData).map(t => t.completed),
+        backgroundColor: '#34D399',
+      }, {
+        label: 'Total Tickets',
+        data: Object.values(teamData).map(t => t.total),
+        backgroundColor: '#60A5FA',
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Timeline Chart
+  const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+  new Chart(timelineCtx, {
+    type: 'line',
+    data: {
+      labels: timelineData.labels,
+      datasets: [{
+        label: 'Completed Tickets',
+        data: timelineData.completed,
+        borderColor: '#34D399',
+        tension: 0.1
+      }, {
+        label: 'Created Tickets',
+        data: timelineData.created,
+        borderColor: '#60A5FA',
+        tension: 0.1
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+  {% endif %}
+</script>
+{% endblock %}

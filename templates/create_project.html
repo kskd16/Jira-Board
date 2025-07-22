@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="p-10 max-w-lg mx-auto">
+  <h2 class="text-3xl font-bold text-gray-800 mb-6">Create New Project</h2>
+  <form method="POST" action="{{ url_for('create_project') }}" class="space-y-6">
+    <div>
+      <label for="name" class="block text-lg font-medium mb-2">Project Name</label>
+      <input type="text" id="name" name="name" placeholder="Enter project name..." class="w-full px-4 py-2 border rounded-md" required>
+    </div>
+    <div>
+      <label for="description" class="block text-lg font-medium mb-2">Description</label>
+      <textarea id="description" name="description" rows="4" placeholder="Enter project description..." class="w-full px-4 py-2 border rounded-md"></textarea>
+    </div>
+    <div>
+      <label for="team_id" class="block text-lg font-medium mb-2">Team</label>
+      <select id="team_id" name="team_id" class="w-full px-4 py-2 border rounded-md" required>
+        <option value="">Select Team</option>
+        {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="team_lead" class="block text-lg font-medium mb-2">Team Lead</label>
+      <select id="team_lead" name="team_lead" class="w-full px-4 py-2 border rounded-md" required>
+        {% for user in team_leads %}
+        <option value="{{ user.id }}">{{ user.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="start_date" class="block text-lg font-medium mb-2">Start Date</label>
+        <input type="date" id="start_date" name="start_date" class="w-full px-4 py-2 border rounded-md" required>
+      </div>
+      <div>
+        <label for="deadline" class="block text-lg font-medium mb-2">Deadline</label>
+        <input type="date" id="deadline" name="deadline" class="w-full px-4 py-2 border rounded-md" required>
+      </div>
+    </div>
+    <div>
+      <label for="status" class="block text-lg font-medium mb-2">Status</label>
+      <select id="status" name="status" class="w-full px-4 py-2 border rounded-md" required>
+        <option value="Active" selected>Active</option>
+        <option value="Completed">Completed</option>
+      </select>
+    </div>
+    <div class="flex justify-end gap-4 mt-8">
+      <a href="{{ url_for('projects_page') }}" class="px-6 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</a>
+      <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+    </div>
+  </form>
+</main>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const teamSelect = document.getElementById('team_id');
+    const teamLeadSelect = document.getElementById('team_lead');
+    
+    // Store original team lead options
+    const originalOptions = Array.from(teamLeadSelect.options).map(option => {
+      return {
+        value: option.value,
+        text: option.text
+      };
+    });
+    
+    // Validate form before submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+      if (!teamSelect.value) {
+        e.preventDefault();
+        alert('Please select a team');
+        return false;
+      }
+      
+      if (!teamLeadSelect.value) {
+        e.preventDefault();
+        alert('Please select a team lead');
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Filter team leads based on selected team
+    teamSelect.addEventListener('change', function() {
+      const selectedTeamId = this.value;
+      
+      // Clear current options
+      teamLeadSelect.innerHTML = '';
+      
+      // Add all options back for now (in a real app, you'd filter by team)
+      originalOptions.forEach(option => {
+        const newOption = document.createElement('option');
+        newOption.value = option.value;
+        newOption.text = option.text;
+        teamLeadSelect.appendChild(newOption);
+      });
+    });
+  });
+</script>
+{% endblock %}

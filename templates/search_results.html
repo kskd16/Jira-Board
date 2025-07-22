@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+  <h2 class="text-2xl font-bold mb-6">Search Results for "{{ query }}"</h2>
+  
+  {% if not results.tickets and not results.projects and not results.users and not results.teams %}
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <p class="text-gray-600">No results found for "{{ query }}".</p>
+      <p class="text-gray-500 mt-2">Try using different keywords or check your spelling.</p>
+    </div>
+  {% else %}
+    <!-- Tickets Section -->
+    {% if results.tickets %}
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Tickets ({{ results.tickets|length }})</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for ticket in results.tickets %}
+            <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-{{ ticket.priority|lower|replace('high', 'red')|replace('medium', 'yellow')|replace('low', 'green') }}-500">
+              <div class="flex justify-between items-start">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-800">{{ ticket.type }}</span>
+                <span class="text-sm text-gray-600">{{ ticket.status }}</span>
+              </div>
+              <h4 class="font-medium mt-2">{{ ticket.title }}</h4>
+              <p class="text-sm text-gray-600 mt-1 truncate">{{ ticket.description }}</p>
+              <div class="mt-3 flex justify-between items-center">
+                <span class="text-xs text-gray-500">Assigned to: {{ ticket.assignee }}</span>
+                <a href="{{ url_for('board_page') }}" class="text-blue-600 hover:text-blue-800 text-sm">View</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Projects Section -->
+    {% if results.projects %}
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Projects ({{ results.projects|length }})</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for project in results.projects %}
+            <div class="bg-white p-4 rounded-lg shadow-md">
+              <div class="flex justify-between items-start">
+                <h4 class="font-medium">{{ project.name }}</h4>
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full {{ 'bg-green-200 text-green-800' if project.status == 'Active' else 'bg-gray-200 text-gray-800' }}">{{ project.status }}</span>
+              </div>
+              <p class="text-sm text-gray-600 mt-1 truncate">{{ project.description }}</p>
+              <div class="mt-3 flex justify-between items-center">
+                <span class="text-xs text-gray-500">
+                  {% if project.start_date and project.deadline %}
+                    {{ project.start_date.strftime('%b %d') }} - {{ project.deadline.strftime('%b %d, %Y') }}
+                  {% endif %}
+                </span>
+                <a href="{{ url_for('project_board', project_id=project.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">View Board</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Teams Section -->
+    {% if results.teams %}
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Teams ({{ results.teams|length }})</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for team in results.teams %}
+            <div class="bg-white p-4 rounded-lg shadow-md">
+              <h4 class="font-medium">{{ team.name }}</h4>
+              <div class="mt-3 flex justify-end">
+                <a href="{{ url_for('teams_page') }}" class="text-blue-600 hover:text-blue-800 text-sm">View Team</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Users Section (only for admin/manager) -->
+    {% if results.users and current_user.role in ['admin', 'manager'] %}
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Users ({{ results.users|length }})</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for user in results.users %}
+            <div class="bg-white p-4 rounded-lg shadow-md">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                  {{ user.name[0] | upper }}
+                </div>
+                <div class="ml-3">
+                  <h4 class="font-medium">{{ user.name }}</h4>
+                  <p class="text-sm text-gray-600">{{ user.email }}</p>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-800">{{ user.role }}</span>
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full {{ 'bg-green-200 text-green-800' if user.approved else 'bg-red-200 text-red-800' }}">{{ 'Approved' if user.approved else 'Pending' }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

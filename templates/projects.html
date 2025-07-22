@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="p-8">
+  <div class="mb-6">
+    <form method="GET" action="{{ url_for('projects_page') }}" class="space-y-4">
+      <!-- Search and Create Project -->
+      <div class="flex items-center justify-between">
+        <div class="relative flex-1 max-w-md">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input type="text" name="search" value="{{ search_query }}" placeholder="Search projects..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <a href="{{ url_for('create_project') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center transition-colors duration-200">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Create Project
+        </a>
+      </div>
+      
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-4 items-center bg-white p-4 rounded-md shadow-sm">
+        <div>
+          <label for="team_lead" class="block text-sm font-medium text-gray-700 mb-1">Team Lead</label>
+          <select id="team_lead" name="team_lead" class="px-4 py-2 border rounded-md">
+            <option value="" {% if not selected_lead_id %}selected{% endif %}>All Leads</option>
+            {% for lead in team_leads %}
+            <option value="{{ lead.id }}" {% if selected_lead_id == lead.id %}selected{% endif %}>{{ lead.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div>
+          <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select id="status" name="status" class="px-4 py-2 border rounded-md">
+            <option value="" {% if not selected_status %}selected{% endif %}>All Statuses</option>
+            {% for status in statuses %}
+            <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div>
+          <label for="team_id" class="block text-sm font-medium text-gray-700 mb-1">Team</label>
+          <select id="team_id" name="team_id" class="px-4 py-2 border rounded-md">
+            <option value="" {% if not selected_team_id %}selected{% endif %}>All Teams</option>
+            {% for team in teams %}
+            <option value="{{ team.id }}" {% if selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="ml-auto self-end">
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Apply Filters</button>
+          <a href="{{ url_for('projects_page') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 ml-2">Clear</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  
+  {% if projects %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for project in projects %}
+    <div class="bg-white p-6 shadow-md rounded-lg border-l-4 {{ 'border-green-500' if project.status == 'Active' else 'border-gray-400' }}">
+      <div class="flex justify-between items-start mb-2">
+        <h3 class="text-xl font-bold text-blue-600"><a href="{{ url_for('project_board', project_id=project.id) }}">{{ project.name }}</a></h3>
+        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full {{ 'bg-green-200 text-green-800' if project.status == 'Active' else 'bg-gray-200 text-gray-800' }}">{{ project.status }}</span>
+      </div>
+      
+      {% if project.description %}
+      <p class="text-gray-600 mb-4 line-clamp-2">{{ project.description }}</p>
+      {% else %}
+      <p class="text-gray-400 italic mb-4">No description</p>
+      {% endif %}
+      
+      <div class="flex flex-wrap gap-4 text-sm">
+        {% if project.team_lead %}
+        <div>
+          <span class="text-gray-500">Lead:</span>
+          <span class="font-medium">{{ project.team_lead.name }}</span>
+        </div>
+        {% endif %}
+        
+        <div>
+          <span class="text-gray-500">Team:</span>
+          <span class="font-medium">{{ project.team.name if project.team else 'No Team' }}</span>
+        </div>
+      </div>
+      
+      {% if project.start_date and project.deadline %}
+      <div class="mt-4 text-sm">
+        <div class="flex justify-between mb-1">
+          <span class="text-gray-500">Timeline:</span>
+          <span class="text-gray-500">{{ project.start_date.strftime('%b %d') }} - {{ project.deadline.strftime('%b %d, %Y') }}</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          {% set today = now().date() %}
+          {% set total_days = (project.deadline - project.start_date).days %}
+          {% set days_passed = (today - project.start_date).days %}
+          {% set progress = (days_passed / total_days * 100) if total_days > 0 else 0 %}
+          {% if progress < 0 %}{% set progress = 0 %}{% endif %}
+          {% if progress > 100 %}{% set progress = 100 %}{% endif %}
+          <div class="bg-blue-600 h-2 rounded-full" style="width: {{ progress }}%"></div>
+        </div>
+      </div>
+      {% endif %}
+      
+      <div class="mt-4 flex justify-end">
+        <a href="{{ url_for('project_board', project_id=project.id) }}" class="text-blue-600 hover:text-blue-800 font-medium flex items-center">
+          <span>View Board</span>
+          <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-white p-8 rounded-lg shadow-md text-center">
+    <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    <h3 class="mt-4 text-xl font-medium text-gray-700">No projects found</h3>
+    <p class="mt-2 text-gray-500">Try adjusting your search or filter criteria</p>
+    <a href="{{ url_for('create_project') }}" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Create New Project</a>
+  </div>
+  {% endif %}
+</main>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Store original filter states
+    const initialFilters = {
+      team_lead: document.getElementById('team_lead').value,
+      status: document.getElementById('status').value,
+      team_id: document.getElementById('team_id').value,
+      search: document.querySelector('input[name="search"]').value
+    };
+    
+    // Filter coordination
+    const teamIdSelect = document.getElementById('team_id');
+    const teamLeadSelect = document.getElementById('team_lead');
+    
+    // When team changes, we might want to update available team leads
+    teamIdSelect.addEventListener('change', function() {
+      // In a real app, you'd filter team leads by team
+      // For now, we'll just submit the form
+      this.form.submit();
+    });
+    
+    // Auto-submit on filter change
+    const filterSelects = document.querySelectorAll('select[name="team_lead"], select[name="status"]');
+    filterSelects.forEach(select => {
+      select.addEventListener('change', function() {
+        this.form.submit();
+      });
+    });
+    
+    // Search input handling
+    const searchInput = document.querySelector('input[name="search"]');
+    let typingTimer;
+    
+    searchInput.addEventListener('input', function() {
+      clearTimeout(typingTimer);
+      if (this.value.trim().length >= 2) {
+        typingTimer = setTimeout(() => {
+          this.form.submit();
+        }, 500);
+      } else if (this.value.trim() === '' && initialFilters.search !== '') {
+        // If search was cleared and there was a previous search, submit
+        typingTimer = setTimeout(() => {
+          this.form.submit();
+        }, 500);
+      }
+    });
+    
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.form.submit();
+      }
+    });
+  });
+</script>
+{% endblock %}

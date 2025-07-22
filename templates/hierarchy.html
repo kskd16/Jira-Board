@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Ticket Hierarchy{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+  <h2 class="text-2xl font-bold mb-6">Ticket Hierarchy</h2>
+  
+  <div class="mb-6">
+    
+    {% if error is defined and error %}
+    <div class="bg-red-100 border-l-4 border-red-500 p-4 mb-4">
+      <p class="text-red-700">
+        <strong>Error:</strong> The database schema needs to be updated to view the hierarchy.
+        Please run the update script as mentioned above.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+  
+  {% if not error %}
+  <!-- Epics -->
+  <div class="mb-8">
+    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Epics</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% if epics and epics|length > 0 %}
+        {% for ticket in epics %}
+        <div class="bg-white p-4 shadow-md rounded-lg border-l-4 border-purple-500">
+          <div class="flex justify-between items-start mb-2">
+            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-purple-200 text-purple-800">EPIC</span>
+            <span class="text-sm text-gray-600">{{ ticket.status }}</span>
+          </div>
+          <h4 class="font-medium">{{ ticket.title }}</h4>
+          <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ ticket.description }}</p>
+          
+          <div class="mt-3 flex justify-between items-center">
+            <span class="text-xs text-gray-500">Assigned to: {{ ticket.assignee }}</span>
+            <button onclick="toggleFeatures('epic-{{ ticket.id }}')" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+              <span>View Features</span>
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-span-3 text-center py-8">
+          <p class="text-gray-500">No epics found. Create an epic ticket to get started.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Features for each Epic -->
+  {% if epics and epics|length > 0 %}
+    {% for epic in epics %}
+    <div id="epic-{{ epic.id }}" class="mb-8 hidden">
+      <h3 class="text-xl font-semibold mb-4 border-b pb-2">Features for: {{ epic.title }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% set feature_count = 0 %}
+        {% for ticket in features %}
+          {% if ticket.type == 'feature' %}
+            {% set feature_count = feature_count + 1 %}
+            <div class="bg-white p-4 shadow-md rounded-lg border-l-4 border-blue-500">
+              <div class="flex justify-between items-start mb-2">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-200 text-blue-800">FEATURE</span>
+                <span class="text-sm text-gray-600">{{ ticket.status }}</span>
+              </div>
+              <h4 class="font-medium">{{ ticket.title }}</h4>
+              <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ ticket.description }}</p>
+              
+              <div class="mt-3 flex justify-between items-center">
+                <span class="text-xs text-gray-500">Assigned to: {{ ticket.assignee }}</span>
+                <button onclick="toggleStories('feature-{{ ticket.id }}')" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                  <span>View Stories</span>
+                  <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+        {% if feature_count == 0 %}
+          <div class="col-span-3 text-center py-8">
+            <p class="text-gray-500">No features found for this epic. Create a feature ticket to get started.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+  
+  <!-- Stories/Tasks/Bugs for each Feature -->
+  {% if features and features|length > 0 %}
+    {% for feature in features %}
+    <div id="feature-{{ feature.id }}" class="mb-8 hidden">
+      <h3 class="text-xl font-semibold mb-4 border-b pb-2">Items for: {{ feature.title }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% set story_count = 0 %}
+        {% for ticket in stories %}
+          {% if ticket.type in ['story', 'task', 'bug'] %}
+            {% set story_count = story_count + 1 %}
+            <div class="bg-white p-4 shadow-md rounded-lg border-l-4 
+                      {% if ticket.type == 'story' %}border-green-500
+                      {% elif ticket.type == 'task' %}border-gray-500
+                      {% else %}border-red-500{% endif %}">
+              <div class="flex justify-between items-start mb-2">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full 
+                           {% if ticket.type == 'story' %}bg-green-200 text-green-800
+                           {% elif ticket.type == 'task' %}bg-gray-200 text-gray-800
+                           {% else %}bg-red-200 text-red-800{% endif %}">
+                  {{ ticket.type|upper }}
+                </span>
+                <span class="text-sm text-gray-600">{{ ticket.status }}</span>
+              </div>
+              <h4 class="font-medium">{{ ticket.title }}</h4>
+              <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ ticket.description }}</p>
+              
+              <div class="mt-3 flex justify-between items-center">
+                <span class="text-xs text-gray-500">Assigned to: {{ ticket.assignee }}</span>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+        {% if story_count == 0 %}
+          <div class="col-span-3 text-center py-8">
+            <p class="text-gray-500">No items found for this feature. Create story, task, or bug tickets to get started.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+  {% endif %}
+</div>
+
+<script>
+  function toggleFeatures(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.classList.toggle('hidden');
+    }
+  }
+  
+  function toggleStories(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.classList.toggle('hidden');
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="p-10">
+  <h2 class="text-3xl font-bold text-gray-800 mb-6">Create New Ticket</h2>
+  <form method="POST" action="{{ url_for('create_ticket') }}" class="space-y-6">
+    <div>
+      <label for="title" class="block text-lg font-medium mb-2">Title</label>
+      <input type="text" id="title" name="title" placeholder="Enter ticket title..." class="w-full px-4 py-2 border rounded-md" required>
+    </div>
+
+    <div>
+      <label for="description" class="block text-lg font-medium mb-2">Description</label>
+      <textarea id="description" name="description" rows="4" placeholder="Describe the issue/task/story..." class="w-full px-4 py-2 border rounded-md" required></textarea>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="type" class="block text-lg font-medium mb-2">Type</label>
+        <select id="type" name="type" class="w-full px-4 py-2 border rounded-md" onchange="toggleParentTicket()">
+          <option value="epic">Epic</option>
+          <option value="feature">Feature</option>
+          <option value="story">Story</option>
+          <option value="task">Task</option>
+          <option value="bug">Bug</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="priority" class="block text-lg font-medium mb-2">Priority</label>
+        <select id="priority" name="priority" class="w-full px-4 py-2 border rounded-md">
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="team" class="block text-lg font-medium mb-2">Team</label>
+        <select id="team" name="team" class="w-full px-4 py-2 border rounded-md" onchange="updateProjectsAndAssignees()" required>
+          <option value="">Select Team</option>
+          {% for team in teams %}
+          <option value="{{ team.id }}">{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div>
+        <label for="project" class="block text-lg font-medium mb-2">Project</label>
+        <select id="project" name="project" class="w-full px-4 py-2 border rounded-md" required>
+          <option value="">Select Project</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}" data-team="{{ project.team_id if project.team_id else '' }}">{{ project.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div id="parent-ticket-container" style="display: none;">
+        <label for="parent_ticket" class="block text-lg font-medium mb-2">Parent Ticket</label>
+        <select id="parent_ticket" name="parent_ticket" class="w-full px-4 py-2 border rounded-md">
+          <option value="">None</option>
+          {% if parent_tickets is defined %}
+            {% for ticket in parent_tickets %}
+            <option value="{{ ticket.id }}">{{ ticket.title }} ({{ ticket.type }})</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+
+      <div>
+        <label for="assignee" class="block text-lg font-medium mb-2">Assign to</label>
+        <select id="assignee" name="assignee" class="w-full px-4 py-2 border rounded-md" required>
+          <option value="">Select Assignee</option>
+          {% for member in team_members %}
+          <option value="{{ member.id }}" data-team="{{ member.team_id }}">
+            {{ member.name }} {% if member.role != 'developer' %}({{ member.role }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+      <div>
+        <label for="start_date" class="block text-lg font-medium mb-2">Start Date</label>
+        <input type="date" id="start_date" name="start_date" class="w-full px-4 py-2 border rounded-md">
+      </div>
+      <div>
+        <label for="end_date" class="block text-lg font-medium mb-2">End Date</label>
+        <input type="date" id="end_date" name="end_date" class="w-full px-4 py-2 border rounded-md">
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <label class="inline-flex items-center">
+        <input type="checkbox" name="public" class="form-checkbox text-blue-600">
+        <span class="ml-2 text-gray-700">Public Ticket</span>
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-4 mt-8">
+      <a href="{{ url_for('dashboard') }}" class="px-6 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</a>
+      <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create Ticket</button>
+    </div>
+  </form>
+</main>
+
+<script>
+  // Store original options for filtering
+  let originalProjectOptions = [];
+  let originalAssigneeOptions = [];
+  let originalParentOptions = [];
+  
+  function toggleParentTicket() {
+    const ticketType = document.getElementById('type').value;
+    const parentContainer = document.getElementById('parent-ticket-container');
+    
+    // Show parent ticket selector for features, stories, tasks and bugs
+    // Hide for epics since they are top-level
+    if (ticketType === 'feature') {
+      parentContainer.style.display = 'block';
+      filterParentOptions('epic');
+    } else if (ticketType === 'story' || ticketType === 'task' || ticketType === 'bug') {
+      parentContainer.style.display = 'block';
+      filterParentOptions('feature');
+    } else {
+      parentContainer.style.display = 'none';
+    }
+  }
+  
+  function filterParentOptions(parentType) {
+    const parentSelect = document.getElementById('parent_ticket');
+    if (!parentSelect) return; // Exit if parent select doesn't exist
+    
+    const options = parentSelect.options;
+    if (options.length <= 1) {
+      // If there's only the 'None' option, no need to filter
+      return;
+    }
+    
+    for (let i = 0; i < options.length; i++) {
+      const optionText = options[i].text;
+      if (i === 0 || optionText.includes(`(${parentType})`)) {
+        options[i].style.display = '';
+      } else {
+        options[i].style.display = 'none';
+      }
+    }
+  }
+  
+  function updateProjectsAndAssignees() {
+    const teamSelect = document.getElementById('team');
+    const projectSelect = document.getElementById('project');
+    const assigneeSelect = document.getElementById('assignee');
+    
+    const selectedTeamId = teamSelect.value;
+    
+    // Reset project dropdown
+    projectSelect.innerHTML = '';
+    projectSelect.appendChild(new Option('Select Project', ''));
+    
+    // Filter projects by team
+    if (selectedTeamId) {
+      // If team is selected, show only projects for that team or projects with no team
+      originalProjectOptions.forEach(option => {
+        const projectTeamId = option.dataset.team;
+        if (!projectTeamId || projectTeamId === '' || projectTeamId === selectedTeamId) {
+          const newOption = option.cloneNode(true);
+          // Update the data-team attribute to match the selected team
+          newOption.dataset.team = selectedTeamId;
+          projectSelect.appendChild(newOption);
+        }
+      });
+    } else {
+      // If no team selected, show all projects
+      originalProjectOptions.forEach(option => {
+        projectSelect.appendChild(option.cloneNode(true));
+      });
+    }
+    
+    // Reset assignee dropdown
+    assigneeSelect.innerHTML = '';
+    assigneeSelect.appendChild(new Option('Select Assignee', ''));
+    
+    // Filter assignees by team
+    if (selectedTeamId) {
+      originalAssigneeOptions.forEach(option => {
+        if (!option.dataset.team || option.dataset.team === selectedTeamId) {
+          assigneeSelect.appendChild(option.cloneNode(true));
+        }
+      });
+    } else {
+      // If no team selected, show all assignees
+      originalAssigneeOptions.forEach(option => {
+        assigneeSelect.appendChild(option.cloneNode(true));
+      });
+    }
+  }
+  
+  // When project changes, ensure team is consistent
+  function handleProjectChange() {
+    const teamSelect = document.getElementById('team');
+    const projectSelect = document.getElementById('project');
+    
+    if (projectSelect.selectedIndex > 0) {
+      const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+      const projectTeamId = selectedOption.dataset.team;
+      
+      if (projectTeamId && teamSelect.value !== projectTeamId) {
+        // Update team selection to match project's team
+        teamSelect.value = projectTeamId;
+        // Update assignees based on new team
+        updateProjectsAndAssignees();
+      }
+    }
+  }
+  
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Store original options
+    const projectSelect = document.getElementById('project');
+    const assigneeSelect = document.getElementById('assignee');
+    const parentSelect = document.getElementById('parent_ticket');
+    
+    // Skip the first option (Select Project/Assignee)
+    for (let i = 1; i < projectSelect.options.length; i++) {
+      originalProjectOptions.push(projectSelect.options[i].cloneNode(true));
+    }
+    
+    for (let i = 1; i < assigneeSelect.options.length; i++) {
+      originalAssigneeOptions.push(assigneeSelect.options[i].cloneNode(true));
+    }
+    
+    if (parentSelect) {
+      for (let i = 0; i < parentSelect.options.length; i++) {
+        originalParentOptions.push(parentSelect.options[i].cloneNode(true));
+      }
+    }
+    
+    // Add event listeners
+    projectSelect.addEventListener('change', handleProjectChange);
+    
+    toggleParentTicket();
+  });
+</script>
+{% endblock %}

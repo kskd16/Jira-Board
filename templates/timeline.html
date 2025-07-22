@@ -1,0 +1,44 @@
+{% extends "iframe_base.html" %}
+
+{% block title %}Project Timeline{% endblock %}
+
+{% block content %}
+<div class="p-8">
+  <h1 class="text-3xl font-bold text-blue-600 mb-8">Project Timeline</h1>
+
+  <div id="timelineContainer" class="space-y-8 max-w-4xl mx-auto">
+    <!-- Timeline entries will be injected here by JavaScript -->
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function fetchTimeline() {
+    try {
+      const response = await fetch('/api/timeline');
+      const projects = await response.json();
+      const container = document.getElementById('timelineContainer');
+      container.innerHTML = '';
+
+      projects.forEach(project => {
+        const card = `
+          <div class="bg-white p-6 rounded shadow">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Project ${project.id}: ${project.name}</h2>
+            <div class="flex gap-8 items-center text-lg">
+              <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded">Start: ${project.start_date}</span>
+              <span class="bg-red-100 text-red-800 px-4 py-2 rounded">Deadline: ${project.deadline}</span>
+              <span class="bg-green-100 text-green-800 px-4 py-2 rounded">Status: ${project.status}</span>
+            </div>
+          </div>
+        `;
+        container.innerHTML += card;
+      });
+    } catch (error) {
+      console.error('Error fetching timeline:', error);
+    }
+  }
+
+  fetchTimeline();
+</script>
+{% endblock %}

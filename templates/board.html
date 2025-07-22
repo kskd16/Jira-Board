@@ -1,0 +1,286 @@
+{% extends "iframe_base.html" %}
+
+{% block title %}Project Board{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 flex flex-wrap gap-4 items-center justify-between">
+  <div class="flex gap-4 items-center">
+    <label for="ticket-type" class="text-lg font-medium text-gray-700">Filter by Type:</label>
+    <select id="ticket-type" class="px-4 py-2 border rounded-md">
+      <option value="all">All Types</option>
+      <option value="epic">Epics</option>
+      <option value="feature">Features</option>
+      <option value="story">Stories</option>
+      <option value="task">Tasks</option>
+      <option value="bug">Bugs</option>
+    </select>
+    
+    <label for="hierarchy-level" class="text-lg font-medium text-gray-700 ml-4">Hierarchy:</label>
+    <select id="hierarchy-level" class="px-4 py-2 border rounded-md" onchange="applyFilters()">
+      <option value="all">All Levels</option>
+      <option value="top">Top Level</option>
+      <option value="children">Child Items</option>
+    </select>
+  </div>
+  <input type="text" id="search-tickets" placeholder="Search tickets..." class="px-4 py-2 border rounded-md w-full max-w-md">
+</div>
+
+<!-- Child Tickets Modal -->
+<div id="childTicketsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold" id="modalTitle">Child Tickets</h3>
+      <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="modalContent" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- Kanban Board View -->
+<div class="flex gap-6 p-6 overflow-x-auto" id="kanban-board">
+  {% for column in ['To Do', 'In Progress', 'In Review', 'Done'] %}
+  <div class="kanban-column min-w-[320px] max-w-sm bg-white rounded-xl p-4 shadow" data-id="{{ column | lower | replace(' ', '') }}">
+    <h2 class="text-xl font-semibold text-gray-700 mb-3">{{ column }}</h2>
+    <div class="kanban-items flex flex-col gap-4" id="{{ column | lower | replace(' ', '') }}-items">
+      {% for ticket in tickets[column] %}
+      <div class="bg-{{ ticket.priority|lower|replace('high', 'red')|replace('medium', 'yellow')|replace('low', 'green') }}-100 p-4 rounded shadow text-gray-800" data-ticket-id="{{ ticket.id }}">
+        {% if ticket.type == 'epic' %}
+        <div class="flex items-center gap-1 mb-1">
+          <span class="bg-purple-500 text-white text-xs px-2 py-0.5 rounded">EPIC</span>
+        </div>
+        {% elif ticket.type == 'feature' %}
+        <div class="flex items-center gap-1 mb-1">
+          <span class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded">FEATURE</span>
+          {% if ticket.parent is defined and ticket.parent %}
+          <span class="text-xs text-gray-500">Part of: {{ ticket.parent.title }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="font-medium">{{ ticket.id }}: {{ ticket.title }}</div>
+        <div class="text-sm text-gray-600">Assigned to: {{ ticket.assignee }}</div>
+        <div class="text-xs text-gray-500">{{ ticket.type }} - {{ ticket.priority }}</div>
+        
+        {% if ticket.children is defined and ticket.children and ticket.children.count() > 0 %}
+        <div class="mt-2 text-xs text-gray-600">
+          <span class="font-medium">Contains:</span> {{ ticket.children.count() }} {{ 'features' if ticket.type == 'epic' else 'items' }}
+        </div>
+        {% endif %}
+        
+        <div class="mt-2 flex justify-end gap-2">
+          {% if current_user.role == 'admin' or (current_user.role == 'manager' and ticket.project and ticket.project.team_lead_id == current_user.id) %}
+          <button 
+            onclick="window.location.href='{{ url_for('reassign_ticket', ticket_id=ticket.id) }}'" 
+            class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">
+            Reassign
+          </button>
+          {% endif %}
+          
+          {% if ticket.children is defined and ticket.children and (ticket.type == 'epic' or ticket.type == 'feature') %}
+          <button 
+            onclick="showChildTickets({{ ticket.id }})" 
+            class="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600">
+            View Items
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Create a toast notification function
+  function showToast(message, isError = false) {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.5s';
+      setTimeout(() => document.body.removeChild(toast), 500);
+    }, 3000);
+  }
+  
+  // Modal functions for child tickets
+  function showChildTickets(ticketId) {
+    fetch(`/api/ticket/${ticketId}/children`)
+      .then(response => response.json())
+      .then(data => {
+        const modal = document.getElementById('childTicketsModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        
+        modalTitle.textContent = `${data.parent.type.charAt(0).toUpperCase() + data.parent.type.slice(1)}: ${data.parent.title}`;
+        
+        // Clear previous content
+        modalContent.innerHTML = '';
+        
+        if (data.children.length === 0) {
+          modalContent.innerHTML = '<p class="text-gray-500">No child tickets found.</p>';
+        } else {
+          // Group children by status
+          const statusGroups = {};
+          data.children.forEach(ticket => {
+            if (!statusGroups[ticket.status]) {
+              statusGroups[ticket.status] = [];
+            }
+            statusGroups[ticket.status].push(ticket);
+          });
+          
+          // Create status columns
+          const statusContainer = document.createElement('div');
+          statusContainer.className = 'grid grid-cols-1 md:grid-cols-4 gap-4';
+          
+          for (const status of ['To Do', 'In Progress', 'In Review', 'Done']) {
+            const column = document.createElement('div');
+            column.className = 'bg-gray-100 p-3 rounded';
+            column.innerHTML = `<h4 class="font-medium mb-2">${status}</h4>`;
+            
+            const tickets = statusGroups[status] || [];
+            if (tickets.length === 0) {
+              column.innerHTML += '<p class="text-sm text-gray-500">No tickets</p>';
+            } else {
+              tickets.forEach(ticket => {
+                const ticketEl = document.createElement('div');
+                ticketEl.className = `bg-${ticket.priority === 'high' ? 'red' : ticket.priority === 'medium' ? 'yellow' : 'green'}-100 p-2 rounded mb-2`;
+                ticketEl.innerHTML = `
+                  <div class="font-medium text-sm">${ticket.id}: ${ticket.title}</div>
+                  <div class="text-xs text-gray-600">${ticket.type} - ${ticket.priority}</div>
+                `;
+                column.appendChild(ticketEl);
+              });
+            }
+            
+            statusContainer.appendChild(column);
+          }
+          
+          modalContent.appendChild(statusContainer);
+        }
+        
+        modal.classList.remove('hidden');
+      })
+      .catch(error => {
+        console.error('Error fetching child tickets:', error);
+        showToast('Error loading child tickets', true);
+      });
+  }
+  
+  function closeModal() {
+    document.getElementById('childTicketsModal').classList.add('hidden');
+  }
+
+  // Initialize Sortable on each kanban column
+  document.querySelectorAll('.kanban-items').forEach(el => {
+    new Sortable(el, {
+      group: 'shared',
+      animation: 150,
+      ghostClass: 'bg-gray-200',
+      onEnd: function (evt) {
+        const ticketId = evt.item.getAttribute('data-ticket-id');
+        const newStatus = evt.to.parentElement.querySelector('h2').textContent.trim();
+        const originalStatus = evt.from.parentElement.querySelector('h2').textContent.trim();
+        
+        // Update ticket status via API
+        fetch(`/api/ticket/${ticketId}/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.status === 'success') {
+            showToast(`Ticket moved to ${newStatus}`);
+          } else {
+            showToast(`Failed: ${data.message}`, true);
+            // Revert the drag if the update failed
+            evt.from.appendChild(evt.item);
+          }
+        })
+        .catch(error => {
+          console.error('Error updating ticket status:', error);
+          showToast('Permission denied or server error', true);
+          // Revert the drag if there was an error
+          evt.from.appendChild(evt.item);
+        });
+      }
+    });
+  });
+
+  document.getElementById('ticket-type').addEventListener('change', function () {
+    const selected = this.value;
+    document.querySelectorAll('.kanban-items > div').forEach(ticket => {
+      const typeElement = ticket.querySelector('.text-xs.text-gray-500');
+      const type = typeElement ? typeElement.textContent.split(' - ')[0].toLowerCase() : '';
+      const isMatch = selected === 'all' || type === selected;
+      ticket.style.display = isMatch ? 'block' : 'none';
+    });
+  });
+
+  document.getElementById('search-tickets').addEventListener('input', function () {
+    const search = this.value.toLowerCase().trim();
+    document.querySelectorAll('.kanban-items > div').forEach(ticket => {
+      const text = ticket.textContent.toLowerCase();
+      ticket.style.display = search === '' || text.includes(search) ? 'block' : 'none';
+    });
+  });
+  
+  // Combine filters when both are active
+  function applyFilters() {
+    const typeFilter = document.getElementById('ticket-type').value;
+    const hierarchyFilter = document.getElementById('hierarchy-level').value;
+    const searchText = document.getElementById('search-tickets').value.toLowerCase().trim();
+    
+    document.querySelectorAll('.kanban-items > div').forEach(ticket => {
+      const text = ticket.textContent.toLowerCase();
+      const typeElement = ticket.querySelector('.text-xs.text-gray-500');
+      const type = typeElement ? typeElement.textContent.split(' - ')[0].toLowerCase() : '';
+      
+      // Check if ticket has parent or children
+      const hasParent = ticket.querySelector('.flex.items-center.gap-1.mb-1 span.text-xs.text-gray-500') !== null;
+      const hasChildren = ticket.querySelector('.mt-2.text-xs.text-gray-600') !== null;
+      
+      const matchesType = typeFilter === 'all' || type === typeFilter;
+      const matchesSearch = searchText === '' || text.includes(searchText);
+      
+      // Apply hierarchy filter
+      let matchesHierarchy = true;
+      if (hierarchyFilter === 'top') {
+        matchesHierarchy = !hasParent;
+      } else if (hierarchyFilter === 'children') {
+        matchesHierarchy = hasParent;
+      }
+      
+      ticket.style.display = (matchesType && matchesSearch && matchesHierarchy) ? 'block' : 'none';
+    });
+  }
+  
+  // Update event listeners to use combined filter function
+  document.getElementById('ticket-type').addEventListener('change', applyFilters);
+  document.getElementById('hierarchy-level').addEventListener('change', applyFilters);
+  document.getElementById('search-tickets').addEventListener('input', applyFilters);
+  
+  // Initialize filters on page load
+  document.addEventListener('DOMContentLoaded', applyFilters);
+</script>
+{% endblock %}

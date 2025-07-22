@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}All Tickets{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">All Tickets</h2>
+        <div class="text-gray-600">
+            Showing <span id="visible-count">{{ tickets|length }}</span> of <span id="total-count">{{ tickets|length }}</span> tickets
+        </div>
+    </div>
+    
+    <div class="mb-4 flex flex-wrap gap-4">
+        <div>
+            <label for="status-filter" class="block text-sm font-medium text-gray-700">Status</label>
+            <select id="status-filter" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                <option value="all">All Statuses</option>
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="In Review">In Review</option>
+                <option value="Done">Done</option>
+            </select>
+        </div>
+        
+        <div>
+            <label for="priority-filter" class="block text-sm font-medium text-gray-700">Priority</label>
+            <select id="priority-filter" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                <option value="all">All Priorities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+        
+        <div>
+            <label for="type-filter" class="block text-sm font-medium text-gray-700">Type</label>
+            <select id="type-filter" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                <option value="all">All Types</option>
+                <option value="epic">Epic</option>
+                <option value="feature">Feature</option>
+                <option value="story">Story</option>
+                <option value="task">Task</option>
+                <option value="bug">Bug</option>
+            </select>
+        </div>
+        
+        <div>
+            <label for="visibility-filter" class="block text-sm font-medium text-gray-700">Visibility</label>
+            <select id="visibility-filter" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm">
+                <option value="all">All</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+            </select>
+        </div>
+        
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700">Search</label>
+            <input type="text" id="search" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" placeholder="Search tickets...">
+        </div>
+        
+        <div class="ml-auto self-end">
+            <button id="clear-filters" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Clear Filters</button>
+        </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200">
+            <thead>
+                <tr>
+                    <th class="border px-4 py-2">ID</th>
+                    <th class="border px-4 py-2">Title</th>
+                    <th class="border px-4 py-2">Type</th>
+                    <th class="border px-4 py-2">Priority</th>
+                    <th class="border px-4 py-2">Status</th>
+                    <th class="border px-4 py-2">Assignee</th>
+                    <th class="border px-4 py-2">Project</th>
+                    <th class="border px-4 py-2">Visibility</th>
+                    <th class="border px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr class="ticket-row" 
+                    data-status="{{ ticket.status }}" 
+                    data-priority="{{ ticket.priority }}" 
+                    data-type="{{ ticket.type }}" 
+                    data-visibility="{{ 'public' if ticket.public else 'private' }}">
+                    <td class="border px-4 py-2">{{ ticket.id }}</td>
+                    <td class="border px-4 py-2">{{ ticket.title }}</td>
+                    <td class="border px-4 py-2">{{ ticket.type }}</td>
+                    <td class="border px-4 py-2">
+                        <span class="px-2 py-1 rounded text-white 
+                            {% if ticket.priority == 'High' %}bg-red-500
+                            {% elif ticket.priority == 'Medium' %}bg-yellow-500
+                            {% else %}bg-green-500{% endif %}">
+                            {{ ticket.priority }}
+                        </span>
+                    </td>
+                    <td class="border px-4 py-2">
+                        <span class="px-2 py-1 rounded
+                            {% if ticket.status == 'To Do' %}bg-gray-200
+                            {% elif ticket.status == 'In Progress' %}bg-blue-200
+                            {% elif ticket.status == 'In Review' %}bg-purple-200
+                            {% else %}bg-green-200{% endif %}">
+                            {{ ticket.status }}
+                        </span>
+                    </td>
+                    <td class="border px-4 py-2">{{ ticket.assignee }}</td>
+                    <td class="border px-4 py-2">{{ ticket.project.name if ticket.project else 'N/A' }}</td>
+                    <td class="border px-4 py-2">
+                        <span class="px-2 py-1 rounded {% if ticket.public %}bg-green-200{% else %}bg-red-200{% endif %}">
+                            {{ 'Public' if ticket.public else 'Private' }}
+                        </span>
+                    </td>
+                    <td class="border px-4 py-2">
+                        <a href="{{ url_for('reassign_ticket', ticket_id=ticket.id) }}" class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Reassign</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Filter functionality
+    function applyFilters() {
+        const statusFilter = document.getElementById('status-filter').value;
+        const priorityFilter = document.getElementById('priority-filter').value;
+        const typeFilter = document.getElementById('type-filter').value;
+        const visibilityFilter = document.getElementById('visibility-filter').value;
+        const searchText = document.getElementById('search').value.toLowerCase();
+        
+        let visibleCount = 0;
+        
+        document.querySelectorAll('.ticket-row').forEach(row => {
+            const status = row.getAttribute('data-status');
+            const priority = row.getAttribute('data-priority');
+            const type = row.getAttribute('data-type');
+            const visibility = row.getAttribute('data-visibility');
+            const text = row.textContent.toLowerCase();
+            
+            const statusMatch = statusFilter === 'all' || status === statusFilter;
+            const priorityMatch = priorityFilter === 'all' || priority.toLowerCase() === priorityFilter.toLowerCase();
+            const typeMatch = typeFilter === 'all' || type.toLowerCase() === typeFilter.toLowerCase();
+            const visibilityMatch = visibilityFilter === 'all' || visibility === visibilityFilter;
+            const textMatch = searchText === '' || text.includes(searchText);
+            
+            if (statusMatch && priorityMatch && typeMatch && visibilityMatch && textMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update filter counts
+        document.getElementById('visible-count').textContent = visibleCount;
+        document.getElementById('total-count').textContent = document.querySelectorAll('.ticket-row').length;
+    }
+    
+    document.getElementById('status-filter').addEventListener('change', applyFilters);
+    document.getElementById('priority-filter').addEventListener('change', applyFilters);
+    document.getElementById('type-filter').addEventListener('change', applyFilters);
+    document.getElementById('visibility-filter').addEventListener('change', applyFilters);
+    document.getElementById('search').addEventListener('input', applyFilters);
+    
+    // Clear filters button
+    document.getElementById('clear-filters').addEventListener('click', function() {
+        document.getElementById('status-filter').value = 'all';
+        document.getElementById('priority-filter').value = 'all';
+        document.getElementById('type-filter').value = 'all';
+        document.getElementById('visibility-filter').value = 'all';
+        document.getElementById('search').value = '';
+        applyFilters();
+    });
+    
+    // Initialize filters on page load
+    applyFilters();
+</script>
+{% endblock %}

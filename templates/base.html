@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Jira Clone{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow-md hidden md:block">
+      <div class="p-6">
+        <div class="flex items-center space-x-2">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" class="w-10 h-10 rounded-full" alt="logo">
+          <h1 class="text-2xl font-bold text-blue-600">Jira Clone</h1>
+        </div>
+        <nav class="mt-8 space-y-4">
+          <a href="{{ url_for('dashboard') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Dashboard
+          </a>
+          {% if current_user.role != 'visitor' %}
+          <a href="{{ url_for('hierarchy_page') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+            Hierarchy
+          </a>
+
+          <a href="{{ url_for('projects_page') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+            </svg>
+            Projects
+          </a>
+          {% endif %}
+          <a href="{{ url_for('teams_page') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            Teams
+          </a>
+          {% if current_user.is_authenticated %}
+            {% if current_user.role == 'admin' %}
+              <a href="{{ url_for('admin.pending_users') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Pending Approvals
+              </a>
+
+              <a href="{{ url_for('debug_users') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Debug Users
+              </a>
+              <a href="{{ url_for('all_tickets') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                All Tickets
+              </a>
+            {% elif current_user.role == 'manager' %}
+              <a href="{{ url_for('admin.pending_users') }}" class="flex items-center text-gray-700 hover:text-blue-600 p-2 rounded-md hover:bg-gray-100">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Team Approvals
+              </a>
+            {% endif %}
+          {% endif %}
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col">
+      <!-- Header -->
+      <header class="bg-white shadow-md px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="relative w-64">
+            <form action="{{ url_for('search') }}" method="GET" id="searchForm">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+              <input type="text" name="q" id="searchInput" placeholder="Search... (Press / to focus)" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </form>
+          </div>
+          <a href="{{ url_for('create_ticket') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center transition-colors duration-200">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Create Ticket
+          </a>
+        </div>
+        <div class="flex items-center space-x-4">
+          <!-- Notifications -->
+          <div class="relative">
+            <button class="p-2 rounded-full hover:bg-gray-100 relative" onclick="toggleNotifications()">
+              <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-9.33-5.052M12 9c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z"></path>
+              </svg>
+              {% if unread_notifications_count > 0 %}
+              <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">{{ unread_notifications_count }}</span>
+              {% endif %}
+            </button>
+            <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white border rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div class="px-4 py-2 border-b flex justify-between items-center">
+                <h3 class="text-sm font-semibold text-gray-700">Notifications</h3>
+                {% if notifications %}
+                <a href="{{ url_for('mark_all_read') }}" class="text-xs text-blue-600 hover:text-blue-800">Mark all as read</a>
+                {% endif %}
+              </div>
+              
+              <div class="divide-y divide-gray-100">
+                {% if notifications %}
+                  {% for notification in notifications %}
+                  <a href="{{ notification.link }}" class="block px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out {{ 'bg-blue-50' if not notification.read }}">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0">
+                        {% if not notification.read %}
+                        <span class="inline-block w-2 h-2 bg-blue-600 rounded-full"></span>
+                        {% endif %}
+                      </div>
+                      <div class="ml-3 w-full">
+                        <p class="text-sm text-gray-700">{{ notification.message }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ notification.created_at.strftime('%b %d, %H:%M') }}</p>
+                      </div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                  <div class="px-4 py-6 text-center text-gray-500">
+                    <p>No notifications</p>
+                  </div>
+                {% endif %}
+              </div>
+              
+              {% if notifications %}
+              <div class="px-4 py-2 border-t text-center">
+                <a href="{{ url_for('notifications_page') }}" class="text-sm text-blue-600 hover:text-blue-800">View all notifications</a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="relative">
+            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center cursor-pointer" onclick="toggleDropdown()">
+              {% if current_user.is_authenticated %}
+                {{ current_user.name[0] | upper }}
+              {% else %}
+                U
+              {% endif %}
+            </div>
+            <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg z-50">
+              {% if current_user.is_authenticated %}
+                <div class="px-4 py-2 border-b">
+                  <p class="text-sm font-medium text-gray-900">{{ current_user.name }}</p>
+                  <p class="text-xs text-gray-500">{{ current_user.email }}</p>
+                </div>
+              {% endif %}
+
+              <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+                Logout
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-y-auto p-6">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <script>
+    function toggleDropdown() {
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.classList.toggle('hidden');
+      // Hide notifications dropdown if open
+      document.getElementById('notificationsDropdown').classList.add('hidden');
+    }
+    
+    function toggleNotifications() {
+      const dropdown = document.getElementById('notificationsDropdown');
+      dropdown.classList.toggle('hidden');
+      // Hide profile dropdown if open
+      document.getElementById('profileDropdown').classList.add('hidden');
+      
+      // Mark notifications as read when opened
+      if (!dropdown.classList.contains('hidden')) {
+        fetch('/api/notifications/read', { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            // Remove notification badge if all read
+            const badge = document.querySelector('.notification-badge');
+            if (badge) badge.style.display = 'none';
+          })
+          .catch(error => console.error('Error marking notifications as read:', error));
+      }
+    }
+    
+    // Search functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('searchInput');
+      const searchForm = document.getElementById('searchForm');
+      
+      // Focus search input when '/' key is pressed
+      document.addEventListener('keydown', function(e) {
+        if (e.key === '/' && document.activeElement !== searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+        }
+      });
+      
+      // Submit form when Enter key is pressed
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && searchInput.value.trim() !== '') {
+          searchForm.submit();
+        }
+      });
+      
+      // Auto-submit after typing stops
+      let typingTimer;
+      searchInput.addEventListener('input', function() {
+        clearTimeout(typingTimer);
+        if (searchInput.value.trim().length >= 3) {
+          typingTimer = setTimeout(function() {
+            searchForm.submit();
+          }, 1000); // Submit after 1 second of inactivity
+        }
+      });
+    });
+  </script>
+</body>
+</html>

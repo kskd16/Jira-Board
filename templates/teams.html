@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div class="relative w-1/2">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+      </svg>
+    </div>
+    <input id="teamSearch" type="text" placeholder="Search teams or members..." class="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+  </div>
+  <div class="space-x-4">
+    {% if current_user.role == 'admin' %}
+    <a href="{{ url_for('create_team') }}" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Create Team</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mb-4 flex flex-wrap gap-2">
+  <span class="text-sm font-medium text-gray-700 mr-2">Filter by role:</span>
+  <button class="role-filter px-3 py-1 rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 active" data-role="all">All</button>
+  <button class="role-filter px-3 py-1 rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200" data-role="manager">Managers</button>
+  <button class="role-filter px-3 py-1 rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200" data-role="developer">Developers</button>
+</div>
+
+<h2 class="text-2xl font-semibold text-gray-800 mb-4">People you work with</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+  {% for person in people %}
+  <div class="bg-white shadow rounded p-4 flex items-center gap-4">
+    <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold" 
+         style="background-color: {{ '#%02x%02x%02x' | format(((person.name|length * 37) % 255), ((person.name|length * 93) % 255), ((person.name|length * 143) % 255)) }}">
+      {{ person.name[0]|upper }}{{ person.name.split(' ')[1][0]|upper if ' ' in person.name else '' }}
+    </div>
+    <div>
+      <h3 class="text-lg font-semibold text-blue-700">{{ person.name }}</h3>
+      <p class="text-gray-600">{{ person.role }}</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-span-full text-center py-8">
+    <p class="text-gray-500">No team members available.</p>
+  </div>
+  {% endfor %}
+</div>
+
+
+
+<!-- Create Team Modal -->
+<div id="createTeamModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+    <h2 class="text-2xl font-bold mb-4 text-green-600">Create Team</h2>
+    <input id="teamName" type="text" placeholder="Team name" class="w-full px-4 py-2 border rounded-md mb-4">
+    <input id="projectName" type="text" placeholder="Project name" class="w-full px-4 py-2 border rounded-md mb-4">
+    <label class="block mb-2 font-medium text-gray-700">Add People:</label>
+    <input id="teamMembers" type="text" placeholder="Comma-separated emails" class="w-full px-4 py-2 border rounded-md mb-4">
+    <div class="flex justify-end space-x-4">
+      <button onclick="toggleCreateTeamForm()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+      <button onclick="createTeam()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Team Lead Modal -->
+<div id="manageManagerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+    <h2 class="text-2xl font-bold mb-4 text-blue-600">Manage Team Lead</h2>
+    <p class="mb-4 text-gray-600">Select a team member to assign as the Team Lead:</p>
+    
+    <form id="managerForm" method="POST" action="">
+      <div class="mb-4">
+        <select id="managerSelect" name="manager_id" class="w-full px-4 py-2 border rounded-md">
+          <option value="">Select Team Member</option>
+          <!-- Options will be populated dynamically -->
+        </select>
+      </div>
+      
+      <div class="flex justify-end space-x-4">
+        <button type="button" onclick="toggleManagerModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Update Team Lead</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<h2 class="text-2xl font-semibold text-gray-800 my-6">Your Teams</h2>
+<div class="space-y-4">
+  {% for team_name, team_members in teams.items() %}
+  <div class="bg-white shadow rounded p-4 team-card" data-team-name="{{ team_name }}">
+    <div class="flex justify-between items-center mb-2">
+      <h3 class="text-xl font-semibold text-green-700">{{ team_name }}</h3>
+      <div class="flex gap-4">
+        {% if current_user.role == 'admin' %}
+        <button onclick="toggleManagerModal('{{ team_members[0].team_id if team_members else 1 }}')" class="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Manage Team Lead</button>
+        {% endif %}
+        {% if current_user.role == 'admin' or current_user.role == 'manager' %}
+        <a href="{{ url_for('team_pending_users', team_id=team_members[0].team_id if team_members else 1) }}" 
+           class="text-sm text-blue-600 hover:underline">View Pending Users</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex gap-4 flex-wrap">
+      {% for member in team_members %}
+      <div class="flex items-center gap-3 team-member" data-name="{{ member.name }}" data-role="{{ member.role }}" data-email="{{ member.email }}">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold" 
+             style="background-color: {{ '#%02x%02x%02x' | format(((member.name|length * 37) % 255), ((member.name|length * 93) % 255), ((member.name|length * 143) % 255)) }}">
+          {{ member.name[0]|upper }}{{ member.name.split(' ')[1][0]|upper if ' ' in member.name else '' }}
+        </div>
+        <div>
+          <span class="text-gray-700 font-medium">{{ member.name }}</span>
+          <p class="text-xs text-gray-500">
+            {{ member.role }}
+            {% if member.id == member.team.manager_id %}
+            <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded ml-1">Team Lead</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white shadow rounded p-4 text-center">
+    <p class="text-gray-500">No teams available.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  function toggleDropdown() {
+    document.getElementById('dropdown').classList.toggle('hidden');
+  }
+
+  function toggleCreateTeamForm() {
+    document.getElementById('createTeamModal').classList.toggle('hidden');
+  }
+  
+  function toggleManagerModal(teamId = null) {
+    const modal = document.getElementById('manageManagerModal');
+    modal.classList.toggle('hidden');
+    
+    if (teamId) {
+      // Set the form action URL
+      document.getElementById('managerForm').action = `/team/${teamId}/update_manager`;
+      
+      // Fetch team members for this team
+      fetch(`/api/team/${teamId}/members`)
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('managerSelect');
+          // Clear existing options
+          select.innerHTML = '<option value="">Select Team Member</option>';
+          
+          // Add team members as options
+          data.forEach(member => {
+            const option = document.createElement('option');
+            option.value = member.id;
+            option.textContent = `${member.name} (${member.role})`;
+            option.selected = member.is_manager;
+            select.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Error fetching team members:', error));
+    }
+  }
+
+  async function createTeam() {
+    const name = document.getElementById('teamName').value;
+    const project = document.getElementById('projectName').value;
+    const members = document.getElementById('teamMembers').value.split(',').map(m => m.trim());
+    await fetch('/api/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, project, members })
+    });
+    toggleCreateTeamForm();
+    window.location.reload();
+  }
+  
+  // Enhanced search functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('teamSearch');
+    const roleFilters = document.querySelectorAll('.role-filter');
+    let activeRole = 'all';
+    
+    // Search function
+    function performSearch() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const teamCards = document.querySelectorAll('.team-card');
+      
+      teamCards.forEach(card => {
+        const teamName = card.getAttribute('data-team-name').toLowerCase();
+        const teamMembers = card.querySelectorAll('.team-member');
+        let teamVisible = false;
+        
+        // Check if team name matches search
+        if (teamName.includes(searchTerm)) {
+          teamVisible = true;
+        }
+        
+        // Check if any team member matches search and role filter
+        teamMembers.forEach(member => {
+          const memberName = member.getAttribute('data-name').toLowerCase();
+          const memberRole = member.getAttribute('data-role').toLowerCase();
+          const memberEmail = member.getAttribute('data-email').toLowerCase();
+          
+          // Check if member matches search term
+          const matchesSearch = searchTerm === '' || 
+                               memberName.includes(searchTerm) || 
+                               memberEmail.includes(searchTerm);
+          
+          // Check if member matches role filter
+          const matchesRole = activeRole === 'all' || memberRole === activeRole;
+          
+          // Show/hide member based on filters
+          if (matchesSearch && matchesRole) {
+            member.style.display = '';
+            teamVisible = true;
+          } else {
+            member.style.display = 'none';
+          }
+        });
+        
+        // Show/hide team card based on visibility of team or members
+        card.style.display = teamVisible ? '' : 'none';
+      });
+    }
+    
+    // Search input event
+    searchInput.addEventListener('input', performSearch);
+    
+    // Role filter events
+    roleFilters.forEach(button => {
+      button.addEventListener('click', function() {
+        // Update active state
+        roleFilters.forEach(btn => btn.classList.remove('active', 'bg-blue-100', 'text-blue-800'));
+        roleFilters.forEach(btn => btn.classList.add('bg-gray-100', 'text-gray-800'));
+        this.classList.add('active', 'bg-blue-100', 'text-blue-800');
+        this.classList.remove('bg-gray-100', 'text-gray-800');
+        
+        // Update active role
+        activeRole = this.getAttribute('data-role');
+        
+        // Perform search with new filter
+        performSearch();
+      });
+    });
+    
+    // Initialize search on page load
+    performSearch();
+  });
+</script>
+{% endblock %}

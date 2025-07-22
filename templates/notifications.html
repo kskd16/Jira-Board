@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-4xl">
+  <h2 class="text-2xl font-bold mb-6">Notifications</h2>
+  
+  <div class="bg-white shadow-md rounded-lg overflow-hidden">
+    <div class="px-6 py-4 border-b flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-700">All Notifications</h3>
+      {% if notifications %}
+      <a href="{{ url_for('mark_all_read') }}" class="text-sm text-blue-600 hover:text-blue-800">Mark all as read</a>
+      {% endif %}
+    </div>
+    
+    <div class="divide-y divide-gray-100">
+      {% if notifications %}
+        {% for notification in notifications %}
+        <div class="px-6 py-4 hover:bg-gray-50 transition duration-150 ease-in-out {{ 'bg-blue-50' if not notification.read }}">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              {% if not notification.read %}
+              <span class="inline-block w-2 h-2 bg-blue-600 rounded-full"></span>
+              {% endif %}
+            </div>
+            <div class="ml-3 w-full">
+              <div class="flex justify-between">
+                <p class="text-sm text-gray-700">{{ notification.message }}</p>
+                <a href="{{ url_for('mark_notification_read', notification_id=notification.id) }}" class="text-xs text-blue-600 hover:text-blue-800">Mark as read</a>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">{{ notification.created_at.strftime('%b %d, %Y at %H:%M') }}</p>
+              {% if notification.link %}
+              <a href="{{ notification.link }}" class="mt-2 inline-block text-sm text-blue-600 hover:text-blue-800">View details</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="px-6 py-10 text-center text-gray-500">
+          <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-9.33-5.052M12 9c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z"></path>
+          </svg>
+          <p class="text-lg">No notifications</p>
+          <p class="mt-2">You'll see notifications about tickets, projects, and team activities here.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

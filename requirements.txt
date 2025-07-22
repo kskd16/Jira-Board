@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+flask-login
+flask-migrate
+werkzeug
+sqlalchemy
+requests
+python-dotenv

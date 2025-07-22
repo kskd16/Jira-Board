@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Pending User Approvals{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+<h2 class="text-2xl font-bold mb-4">Pending User Approvals</h2>
+{% if current_user.role == 'manager' %}
+<p class="mb-4 text-gray-600">Users waiting for approval in your team(s)</p>
+{% endif %}
+<table class="min-w-full bg-white border border-gray-200">
+  <thead>
+    <tr>
+      <th class="border px-4 py-2">Name</th>
+      <th class="border px-4 py-2">Email</th>
+      <th class="border px-4 py-2">Role</th>
+      <th class="border px-4 py-2">Team</th>
+      <th class="border px-4 py-2">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in pending_users %}
+    <tr>
+      <td class="border px-4 py-2">{{ user.name }}</td>
+      <td class="border px-4 py-2">{{ user.email }}</td>
+      <td class="border px-4 py-2">{{ user.role }}</td>
+      <td class="border px-4 py-2">{{ user.team.name if user.team else 'N/A' }}</td>
+      <td class="border px-4 py-2">
+        {% if user.role == 'visitor' and current_user.role == 'admin' %}
+          <form method="POST" action="{{ url_for('admin.approve_user', user_id=user.id) }}" style="display:inline-block;">
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('admin.disapprove_user', user_id=user.id) }}" style="display:inline-block; margin-left: 8px;">
+            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Disapprove</button>
+          </form>
+        {% else %}
+          <form method="POST" action="{{ url_for('team_approve_user', team_id=user.team_id, user_id=user.id) }}" style="display:inline-block;">
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('team_disapprove_user', team_id=user.team_id, user_id=user.id) }}" style="display:inline-block; margin-left: 8px;">
+            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Disapprove</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
