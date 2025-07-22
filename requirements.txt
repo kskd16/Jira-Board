@@ -6,3 +6,4 @@ werkzeug
 sqlalchemy
 requests
 python-dotenv
+gunicorn
