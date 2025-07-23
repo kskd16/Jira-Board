@@ -77,4 +77,10 @@ def can_reassign_ticket(ticket, user):
         # Manager can reassign tickets in their team's projects
         if ticket.project and ticket.project.team_id == user.team_id:
             return True
+        if ticket.assignee == user.name:
+            return True
+    if user.role == 'developer':
+        # Developer can reassign tickets assigned to them
+        if ticket.assignee == user.name:
+            return True
     return False
